@@ -1,0 +1,59 @@
+一级配置器用allocate、reallocate分配内存，deallocate释放内存，oom_malloc、oom_realloc、__malloc_alloc_oom_handler为内存分配失败调用函数，
+第一级配置器以malloc、free、realloc等c函数执行实际的内存配置、释放、重配置操作，并实现了类似c++ new-handler的机制（你可以要求系统在内存配置需求
+无法被满足时，调用一个你指定的函数即在new无法完成任务，丢出bad-allo前先调用由客户端指定的处理历程，该历程称为new-handler）。allocate、reallocate
+在调用malloc、realloc无果后，改调用oom_malloc、oom_realloc，该两者有内循环，不断调用内存补不足处理程序，期待重新获得分配空间，但如果内存处理程序
+未由客户端设定，程序直接调用bad_alloc异常，或exit直接终止程序。
+一级配置器的主要代码如下：
+template <int inst>
+  class __malloc_alloc_template
+  {
+  private:
+      static void *oom_malloc(size_t);   //malloc调用内存不足
+        static void *oom_realloc(void *, size_t); //realloc调用内存不足
+      static void (* __malloc_alloc_oom_handler)();     //错误处理函数
+  public:
+        static void * allocate(size_t n)                     //
+        {
+            void *result = malloc(n);                     //一级空间配置器直接调用malloc
+            if (0 == result) 
+                    result = oom_malloc(n);
+             return result;
+        }
+
+        static void deallocate(void *p, size_t /* n */)
+        {
+             free(p);
+        }
+
+        static void * reallocate(void *p, size_t /* old_sz */, size_t new_sz)
+        {
+              void * result = realloc(p, new_sz);           //一级空间配置器直接调用realloc
+            if (0 == result)
+                   result = oom_realloc(p, new_sz);
+            return result;
+        }
+      static void (* set_malloc_handler(void (*f)()))()    //设置错误处理函数
+        {
+                  void (* old)() = __malloc_alloc_oom_handler;
+                  __malloc_alloc_oom_handler = f;
+                  return(old);
+        }
+   };
+template <int inst>
+    void * __malloc_alloc_template<inst>::oom_malloc(size_t n)
+    {
+        void (*my_malloc_handler)();
+        void *result;
+        for (;;)
+        {
+            my_malloc_handler = __malloc_alloc_oom_handler;
+            if (0 == my_malloc_handler) 
+            {
+                         __THROW_BAD_ALLOC;        //抛异常
+            }
+            (*my_malloc_handler)();
+            result = malloc(n);
+            if (result) 
+                    return(result);
+         }
+     }
