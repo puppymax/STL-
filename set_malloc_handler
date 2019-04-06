@@ -1,0 +1,17 @@
+在C++ STL的SGI实现版本中，一级空间配置器class __malloc_alloc_template中有一个静态函数的实现如下：
+static void (*set_malloc_handler(void (*f)()))() {
+    void (*old)() = __malloc_alloc_oom_handler;
+    __malloc_alloc_oom_handler = f;
+    return (old);
+}
+解析：定义函数set_malloc_handler,形参为返回空，参数空的函数，返回值为函数（返回空，形参空）即void(*)();
+利用C++11的尾置返回类型表达式函数首部可以写成这样：
+auto set_malloc_handler(void (*f)()) -> void (*)()
+其中参数类型和返回类型都是void (*)()
+其实，我们为了阅读方便，可以改变一下写法，在C++中，我们可以这样写：
+typedef void (*PF)(); //我们定义一个函数指针类型PF代表void (*)()类型
+static PF set_malloc_handler(PF f) {
+    PF old = __malloc_alloc_oom_handler;
+    __malloc_alloc_oom_handler = f;
+    return (old);
+}
