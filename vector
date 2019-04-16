@@ -1,0 +1,6 @@
+1、初始化容量为构造函数初始化元素个数
+2、拥有三个迭代器 start、 finish、 end_of_storage（备用空间末尾）
+3、capacity 返回end_of_storage
+4、push_back、insert若有足够空间，则插入，否则重新配置空间（2*old_size或old_size+n）,然后将原来vector元素拷贝到新空间，生成new_start,new_finish
+新的容量
+5、uninitialized_fill_n(start, n, x)用x初始化从start开始的n个元素；uninitialized_copy(start, finish, new_start)将start-finish中的数据拷贝到new_start
